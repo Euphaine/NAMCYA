@@ -1,0 +1,133 @@
+@page "/events/{EventId:int}/judge-qrs"
+@inject NavigationManager Navigation
+@inject AppDbContext Db
+@using System.Net
+@using System.Net.Sockets
+@using System.Net.NetworkInformation
+@using Net.Codecrete.QrCodeGenerator
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Judge QR Codes</h2>
+            <p class="text-muted">Event: @eventTitle</p>
+        </div>
+        <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+    </div>
+
+    @if (judges == null)
+    {
+        <p><em>Loading judges...</em></p>
+    }
+    else if (!judges.Any())
+    {
+        <div class="alert alert-warning">No judges have been added to this event yet. Add judges first to generate their QR codes.</div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var judge in judges)
+            {
+                var loginUrl = $"http://{localIp}:{serverPort}/judge-portal?eventId={EventId}&pin={judge.PinCode}";
+                var qr = QrCode.EncodeText(loginUrl, QrCode.Ecc.Medium);
+                var qrCodeSvg = qr.ToSvgString(2);
+
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm text-center p-3">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary">@judge.Name</h5>
+                            <p class="text-muted small mb-2">PIN: <strong>@judge.PinCode</strong></p>
+                            
+                            <div class="my-3 d-flex justify-content-center">
+                                <div style="width: 180px; height: 180px;">
+                                    @((MarkupString)qrCodeSvg)
+                                </div>
+                            </div>
+
+                            <p class="text-muted font-monospace small mb-2 text-break" style="font-size: 0.7rem;">@loginUrl</p>
+                            <p class="card-text small text-secondary text-truncate">Scan to login directly</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int EventId { get; set; }
+
+    private string eventTitle = "";
+    private List<Judge> judges = new();
+    private string localIp = "127.0.0.1";
+    private int serverPort = 5000;
+
+    protected override async Task OnInitializedAsync()
+    {
+        localIp = GetLocalIpAddress();
+
+        // Extract the dynamically assigned active port from NavigationManager
+        var uri = new Uri(Navigation.BaseUri);
+        serverPort = uri.Port;
+
+        var ev = await Db.Events.FindAsync(EventId);
+        if (ev != null)
+        {
+            eventTitle = ev.Title;
+        }
+
+        judges = await Db.Judges
+            .Where(j => j.EventId == EventId)
+            .ToListAsync();
+    }
+
+    private string GetLocalIpAddress()
+    {
+        try
+        {
+            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (networkInterface.OperationalStatus == OperationalStatus.Up &&
+                    networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                    networkInterface.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                {
+                    string name = networkInterface.Name.ToLower();
+                    string desc = networkInterface.Description.ToLower();
+
+                    if (name.Contains("vethernet") || desc.Contains("virtual") || desc.Contains("hyper-v") || desc.Contains("subsystem"))
+                    {
+                        continue;
+                    }
+
+                    var properties = networkInterface.GetIPProperties();
+                    foreach (var addressInfo in properties.UnicastAddresses)
+                    {
+                        if (addressInfo.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            string ipStr = addressInfo.Address.ToString();
+                            if (ipStr.StartsWith("192.168.") || ipStr.StartsWith("10.") || ipStr.StartsWith("172."))
+                            {
+                                return ipStr;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fallback safety
+        }
+
+        return "127.0.0.1";
+    }
+    private async Task GoBack()
+{
+    await JS.InvokeVoidAsync("history.back");
+}
+}

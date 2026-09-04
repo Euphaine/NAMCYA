@@ -1,0 +1,111 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, #101630 0%, #1c1438 50%, #0d1b2a 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.top-row {
+    background-image: linear-gradient(rgba(13, 27, 42, 0.85), rgba(13, 27, 42, 0.85)), url('images/banner.png');
+    background-size: cover;
+    background-position: center;
+    border-bottom: 2px solid transparent;
+    border-image: linear-gradient(90deg, #00d2ff, #9b51e0, #ff007f, #f2c94c) 1;
+    justify-content: flex-end;
+    height: 4.2rem;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.top-row ::deep a, .top-row ::deep .btn-link {
+    white-space: nowrap;
+    margin-left: 1.5rem;
+    text-decoration: none;
+    color: #e0e6ed;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
+    color: #00d2ff;
+    text-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+}
+
+.top-row ::deep a:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640.98px) {
+    .top-row {
+        justify-content: space-between;
+    }
+
+    .top-row ::deep a, .top-row ::deep .btn-link {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 641px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 260px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth ::deep a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .top-row, article {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: #fff3cd;
+    color: #856404;
+    bottom: 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.75rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    border-top: 1px solid #ffeeba;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
+    font-weight: bold;
+}

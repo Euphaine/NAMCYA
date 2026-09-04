@@ -1,0 +1,248 @@
+@page "/event/{EventId:int}/tabulation"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject TabulationService TabulationService
+@using Microsoft.EntityFrameworkCore
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+@using EventScoringSystem.Services
+@implements IDisposable
+@inject IJSRuntime JS
+
+<PageTitle>Live Tabulation - @eventItem?.Title</PageTitle>
+
+<div class="container-fluid px-4 py-4">
+    <!-- Header Section -->
+    <div class="row align-items-center mb-4 pb-3 border-bottom">
+        <div class="col-md-7">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold text-uppercase tracking-wider" style="font-size: 0.75rem;">
+                    <i class="bi bi-broadcast me-1 text-danger animate-pulse"></i> Live Leaderboard
+                </span>
+            </div>
+            <h2 class="fw-extrabold text-dark mb-1 display-6">
+                @(eventItem?.Title ?? "Loading Event...")
+            </h2>
+            <p class="text-muted mb-0 small">Real-time Rank-Sum tabulation with fractional ranking &bull; Auto-refreshes every 3s</p>
+        </div>
+        <div class="col-md-5 d-flex justify-content-md-end align-items-center gap-2 mt-3 mt-md-0">
+            <button class="btn @(eventItem?.IsFinalized == true ? "btn-success" : "btn-warning text-dark") fw-bold shadow-sm px-4 py-2 rounded-pill transition-all" @onclick="ToggleFinalization">
+                <i class="bi @(eventItem?.IsFinalized == true ? "bi-check-circle-fill" : "bi-lock-fill") me-1"></i> 
+                @(eventItem?.IsFinalized == true ? "Scoring Finalized" : "Lock & Finalize")
+            </button>
+            <a href="/event/@(eventItem?.Id)/results" class="btn btn-outline-success btn-sm px-3 fw-semibold d-flex align-items-center text-decoration-none">
+                <i class="bi bi-file-earmark-text me-1"></i> Results
+            </a>
+            <button class="btn btn-light border fw-semibold shadow-sm px-3 py-2 rounded-pill text-secondary" @onclick="GoBack">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </button>
+        </div>
+    </div>
+
+    @if (eventItem == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-3 fw-medium">Loading event details...</p>
+        </div>
+    }
+    else if (!contestants.Any() || !criteria.Any() || !judges.Any())
+    {
+        <div class="alert alert-light border-start border-warning border-4 shadow-sm p-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-3 me-3"></i>
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">Incomplete Configuration</h5>
+                    <p class="text-muted mb-0 small">Please ensure you have added at least one <strong>Contestant</strong>, <strong>Judge</strong>, and <strong>Criterion</strong> to generate the live tabulation board.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Leaderboard Card -->
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4 bg-white">
+            <div class="card-header bg-gradient bg-light py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning">
+                        <i class="bi bi-trophy-fill fs-5"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-0">Official Standings</h5>
+                </div>
+                <div>
+                    @if (!eventItem.IsFinalized)
+                    {
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2 rounded-pill fw-medium">
+                            <span class="spinner-grow spinner-grow-sm text-info me-1" role="status"></span> Live Sync Active
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fw-medium">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Results Locked
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-center">
+                        <thead class="table-dark text-uppercase fs-7 text-secondary bg-dark text-white">
+                            <tr>
+                                <th class="py-3 ps-4 text-start" style="width: 100px;">Rank</th>
+                                <th class="py-3" style="width: 110px;">Sum Rank</th>
+                                <th class="py-3 text-start" style="min-width: 220px;">Contestant</th>
+                                @foreach (var judge in judges)
+                                {
+                                    <th class="py-3">@judge.Name <span class="text-white-50 fw-normal" style="font-size: 0.7rem;">(100)</span></th>
+                                }
+                                <th class="py-3 text-end pe-4">Final Score <span class="text-white-50 fw-normal" style="font-size: 0.7rem;">(100)</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in results)
+                            {
+                                var rankClass = item.OverallRank switch {
+                                    1 => "table-warning bg-opacity-25 fw-bold",
+                                    2 => "table-light fw-bold",
+                                    3 => "table-active fw-medium",
+                                    _ => ""
+                                };
+
+                                <tr class="@rankClass transition-all">
+                                    <!-- Rank Badge -->
+                                    <td class="ps-4 text-start">
+                                        @if (item.OverallRank == 1)
+                                        {
+                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-award-fill me-1"></i> 1st</span>
+                                        }
+                                        else if (item.OverallRank == 2)
+                                        {
+                                            <span class="badge bg-secondary text-white px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-award me-1"></i> 2nd</span>
+                                        }
+                                        else if (item.OverallRank == 3)
+                                        {
+                                            <span class="badge bg-brown text-white px-3 py-2 rounded-pill shadow-sm" style="background-color: #cd7f32;"><i class="bi bi-award me-1"></i> 3rd</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted fw-bold ps-2">@item.OverallRank.ToString("00")</span>
+                                        }
+                                    </td>
+
+                                    <!-- SumRank Column -->
+                                    <td>
+                                        <span class="font-monospace badge bg-light text-dark border px-2 py-1">@item.RankSum.ToString("N1")</span>
+                                    </td>
+
+                                    <!-- Contestant Details -->
+                                    <td class="text-start py-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle fw-bold d-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px; font-size: 0.85rem;">
+                                                #@item.Contestant.ContestantNumber
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark fs-6">@item.Contestant.Name</div>
+                                                @if (!string.IsNullOrWhiteSpace(item.Contestant.Region))
+                                                {
+                                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill text-danger me-1" style="font-size: 0.75rem;"></i>@item.Contestant.Region</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- Judge Individual Scores -->
+                                    @foreach (var judge in judges)
+                                    {
+                                        var detail = item.JudgeDetails.FirstOrDefault(jd => jd.JudgeId == judge.Id);
+                                        <td class="font-monospace text-secondary fw-medium">
+                                            @(detail != null ? detail.Score.ToString("N1") : "0.0")
+                                        </td>
+                                    }
+                                    
+                                    <!-- Final Score -->
+                                    <td class="text-end pe-4 font-monospace fw-extrabold text-primary fs-5">
+                                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 border border-primary border-opacity-10">
+                                            @item.FinalScore.ToString("N1")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int EventId { get; set; }
+
+    private EventItem? eventItem;
+    private List<Contestant> contestants = new();
+    private List<Judge> judges = new();
+    private List<Criterion> criteria = new();
+    private List<ContestantResultModel> results = new();
+    private PeriodicTimer? timer;
+    private Task? timerTask;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        timerTask = WatchForUpdatesAsync();
+    }
+
+    private async Task WatchForUpdatesAsync()
+    {
+        try
+        {
+            while (await timer!.WaitForNextTickAsync())
+            {
+                await LoadData();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on component disposal
+        }
+    }
+
+    private async Task LoadData()
+    {
+        eventItem = await Db.Events.FindAsync(EventId);
+        contestants = await Db.Contestants.Where(c => c.EventId == EventId).OrderBy(c => c.ContestantNumber).ToListAsync();
+        judges = await Db.Judges.Where(j => j.EventId == EventId).OrderBy(j => j.Id).ToListAsync();
+        criteria = await Db.Criteria.Where(cr => cr.EventId == EventId).ToListAsync();
+
+        results = await TabulationService.ComputeEventResultsAsync(EventId);
+        results = results.OrderBy(r => r.OverallRank).ThenBy(r => r.Contestant.ContestantNumber).ToList();
+    }
+
+    private async Task ToggleFinalization()
+    {
+        if (eventItem != null)
+        {
+            eventItem.IsFinalized = !eventItem.IsFinalized;
+            Db.Events.Update(eventItem);
+            await Db.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    private async Task GoBack()
+{
+    await JS.InvokeVoidAsync("history.back");
+}
+}

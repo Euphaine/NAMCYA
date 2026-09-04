@@ -1,0 +1,244 @@
+﻿@page "/"
+@inject AppDbContext Db
+@inject NavigationManager Navigation
+@using Microsoft.EntityFrameworkCore
+@using System.Net
+@using System.Net.Sockets
+@using System.Net.NetworkInformation
+@using Net.Codecrete.QrCodeGenerator
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+
+
+<PageTitle>Dashboard - NAMCYA Event Scoring System</PageTitle>
+
+<div class="container-fluid px-0 py-2" style="max-width: 1400px;">
+    <!-- Hero Banner with Integrated QR Code & Connection -->
+    <div class="card border-0 shadow-sm rounded-3 text-white mb-4 overflow-hidden" style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);">
+        <div class="card-body p-4 p-md-4">
+            <div class="row align-items-center">
+                <!-- Left Side: Title & Info -->
+                <div class="col-lg-7 mb-3 mb-lg-0">
+                    <span class="badge bg-primary bg-opacity-50 text-white mb-2 px-2 py-1 small fw-normal">Management & Scoring Portal</span>
+                    <h1 class="fw-bold fs-3 fs-md-2 mb-1 text-white">NAMCYA Event Dashboard</h1>
+                    <p class="text-white-50 mb-3 small">Real-time monitoring, tabulation records, and judge portfolio controls.</p>
+                    
+                    <div class="d-flex align-items-center flex-wrap gap-2 pt-1">
+                        <span class="badge bg-dark bg-opacity-50 text-light font-monospace border border-secondary px-3 py-2 shadow-sm fs-6 user-select-all">
+                            http://@localIp:@serverPort
+                        </span>
+                        <a href="http://@localIp:@serverPort/judge-portal" target="_blank" class="btn btn-primary btn-sm px-3 py-2 fw-semibold shadow-sm">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Open Portal
+                        </a>
+                        <a href="/events" class="btn btn-outline-light btn-sm px-3 py-2 fw-semibold shadow-sm">
+                            <i class="bi bi-gear-fill me-1"></i> Manage Events
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Right Side: Compact QR Code Box -->
+                <div class="col-lg-5 text-lg-end">
+                    <div class="d-inline-flex align-items-center gap-3 bg-white bg-opacity-10 p-2 rounded-3 border border-secondary border-opacity-25">
+                        <div class="text-start ps-1">
+                            <div class="text-white fw-semibold small">Connect Judges</div>
+                            <div class="text-white-50" style="font-size: 0.75rem;">Scan via Wi-Fi/LAN</div>
+                        </div>
+                        <div class="bg-white p-1 rounded shadow-sm d-flex align-items-center justify-content-center" style="width: 75px; height: 75px;">
+                            @if (!string.IsNullOrEmpty(qrCodeSvg))
+                            {
+                                <div style="width: 65px; height: 65px; display: inline-block;">
+                                    @((MarkupString)qrCodeSvg)
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted small" style="font-size: 0.6rem;">...</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimalist Thin Metrics Bar -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-3 px-4 py-2.5 bg-white">
+                <div class="d-flex align-items-center justify-content-around flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-calendar-event text-primary"></i>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Total Events:</span>
+                        <span class="fw-bold text-dark">@totalEvents</span>
+                    </div>
+
+                    <div class="vr opacity-25 d-none d-md-block"></div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-people text-success"></i>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Registered Contestants:</span>
+                        <span class="fw-bold text-dark">@totalContestants</span>
+                    </div>
+
+                    <div class="vr opacity-25 d-none d-md-block"></div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-badge text-info"></i>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Active Judges:</span>
+                        <span class="fw-bold text-dark">@totalJudges</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Events Overview Table -->
+    <div class="card border-0 shadow-sm rounded-3 bg-white p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">Active Events Overview</h5>
+                <p class="text-muted small mb-0">Quick access to live tabulation monitors and official reporting.</p>
+            </div>
+            <a href="/events" class="text-decoration-none fw-semibold small text-primary">View All &rarr;</a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-uppercase fs-7 text-secondary">
+                    <tr>
+                        <th class="py-3" style="width: 40%;">Event Name</th>
+                        <th class="py-3" style="width: 35%;">Assigned Judges</th>
+                        <th class="py-3 text-end" style="width: 25%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (events == null || !events.Any())
+                    {
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No active events found. Click "Manage Events" to create one.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var ev in events)
+                        {
+                            var assignedJudges = judges.Where(j => j.EventId == ev.Id).ToList();
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">@ev.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(ev.Description))
+                                    {
+                                        <div class="text-muted small text-truncate" style="max-width: 350px;">@ev.Description</div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (assignedJudges.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var j in assignedJudges)
+                                            {
+                                                <span class="badge bg-light text-dark border px-2 py-1">@j.Name</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small fst-italic">No judges assigned</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group" role="group">
+                                        <a href="/events" class="btn btn-outline-secondary btn-sm px-3 fw-semibold d-flex align-items-center text-decoration-none">
+                                            <i class="bi bi-gear me-1"></i> Manage
+                                        </a>
+                                        <a href="/events/@ev.Id/judge-qrs" class="btn btn-outline-warning btn-sm px-3 fw-semibold d-flex align-items-center text-decoration-none">
+                                            <i class="bi bi-qr-code me-1"></i> QR Codes
+                                        </a>
+                                        <a href="/event/@ev.Id/tabulation" class="btn btn-outline-primary btn-sm px-3 fw-semibold d-flex align-items-center text-decoration-none">
+                                            <i class="bi bi-speedometer2 me-1"></i> Tabulation
+                                        </a>
+                                        <a href="/event/@ev.Id/results" class="btn btn-outline-success btn-sm px-3 fw-semibold d-flex align-items-center text-decoration-none">
+                                            <i class="bi bi-file-earmark-text me-1"></i> Results
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int totalEvents = 0;
+    private int totalContestants = 0;
+    private int totalJudges = 0;
+    private List<EventItem> events = new();
+    private List<Judge> judges = new();
+    private string localIp = "127.0.0.1";
+    private int serverPort = 5000;
+    private string qrCodeSvg = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        localIp = GetLocalIpAddress();
+
+        // Extract the dynamically assigned active port from NavigationManager
+        var uri = new Uri(Navigation.BaseUri);
+        serverPort = uri.Port;
+
+        string portalUrl = $"http://{localIp}:{serverPort}/judge-portal";
+        var qr = QrCode.EncodeText(portalUrl, QrCode.Ecc.Medium);
+        qrCodeSvg = qr.ToSvgString(2);
+
+        totalEvents = await Db.Events.CountAsync();
+        totalContestants = await Db.Contestants.CountAsync();
+        totalJudges = await Db.Judges.CountAsync();
+        
+        events = await Db.Events.OrderByDescending(e => e.Id).Take(5).ToListAsync();
+        judges = await Db.Judges.ToListAsync();
+    }
+
+    private string GetLocalIpAddress()
+    {
+        try
+        {
+            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (networkInterface.OperationalStatus == OperationalStatus.Up &&
+                    networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                    networkInterface.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                {
+                    string name = networkInterface.Name.ToLower();
+                    string desc = networkInterface.Description.ToLower();
+
+                    if (name.Contains("vethernet") || desc.Contains("virtual") || desc.Contains("hyper-v") || desc.Contains("subsystem"))
+                    {
+                        continue;
+                    }
+
+                    var properties = networkInterface.GetIPProperties();
+                    foreach (var addressInfo in properties.UnicastAddresses)
+                    {
+                        if (addressInfo.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            string ipStr = addressInfo.Address.ToString();
+                            if (ipStr.StartsWith("192.168.") || ipStr.StartsWith("10.") || ipStr.StartsWith("172."))
+                            {
+                                return ipStr;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fallback safety
+        }
+
+        return "127.0.0.1";
+    }
+}

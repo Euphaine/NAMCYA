@@ -1,0 +1,42 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="">
+            <img src="images/logo.png" alt="Logo" class="brand-logo" />
+            <span class="brand-text">NAMCYA</span>
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column h-100">
+        <div class="nav-links-wrapper">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                    <span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Home
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="events" Match="NavLinkMatch.All">
+                    <span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Events
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="judge-portal">
+                    <span class="bi bi-person-badge me-2" aria-hidden="true"></span> Judge Portal
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/my-ranking">
+                    <span class="bi bi-person-badge me-2" aria-hidden="true"></span> Personal Rankings
+                </NavLink>
+            </div>
+        </div>
+        
+        <!-- Pinned directly to the bottom red box area -->
+        <div class="sidebar-logo-container px-3 text-center py-3">
+            <img src="images/logo.png" alt="NAMCYA Logo" class="sidebar-footer-logo img-fluid" />
+        </div>
+    </nav>
+</div>

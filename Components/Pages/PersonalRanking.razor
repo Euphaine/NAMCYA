@@ -1,0 +1,227 @@
+@page "/my-ranking"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Admin: Judge Personal Rankings</h3>
+            <p class="text-muted small mb-0">Select an event, then click a judge tab to audit their itemized scoring sheet.</p>
+        </div>
+        <span class="badge bg-dark text-white px-3 py-2 rounded-pill">
+            <i class="bi bi-pc-display me-1"></i> Local Admin Mode Only
+        </span>
+    </div>
+
+    <!-- Event Selection Bar -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4 p-3 bg-white">
+        <div class="row align-items-center">
+            <div class="col-md-12">
+                <label class="form-label fw-semibold small text-secondary mb-1">Select Event</label>
+                <select class="form-select form-select-lg" @bind="selectedEventId" @bind:after="OnEventSelected">
+                    <option value="0">-- Choose Event to View Judges --</option>
+                    @foreach (var ev in events)
+                    {
+                        <option value="@ev.Id">@ev.Title</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (selectedEventId > 0)
+    {
+        <!-- Quick-Switch Judge Tabs -->
+        <div class="mb-4">
+            <label class="form-label fw-semibold small text-secondary mb-2">Judges for this Event (Click to switch):</label>
+            @if (judges == null || !judges.Any())
+            {
+                <div class="alert alert-warning py-2 small">No judges have been registered for this event yet.</div>
+            }
+            else
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var j in judges)
+                    {
+                        bool isSelected = selectedJudgeId == j.Id;
+                        <button class="btn @(isSelected ? "btn-primary shadow" : "btn-outline-secondary bg-white") px-4 py-2 rounded-pill fw-semibold transition-all"
+                                @onclick="() => SelectJudge(j.Id)" @onclick:preventDefault="true">
+                            <i class="bi bi-person-badge me-1"></i> @j.Name 
+                            <span class="badge @(isSelected ? "bg-white text-primary" : "bg-light text-dark") ms-2 font-monospace">PIN: @j.PinCode</span>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (selectedJudge != null)
+    {
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
+            <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-award me-2 text-warning"></i>Rankings & Criteria Breakdown for: <span class="text-primary">@selectedJudge.Name</span>
+                </h5>
+                <span class="badge bg-secondary">PIN Code: @selectedJudge.PinCode</span>
+            </div>
+            <div class="card-body p-0">
+                @if (rankedContestants == null || !rankedContestants.Any())
+                {
+                    <div class="p-4 text-center text-muted">
+                        No scores recorded for this judge yet.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3 ps-4" style="width: 90px;">Rank</th>
+                                    <th class="py-3" style="min-width: 200px;">Contestant # & Name</th>
+                                    <th class="py-3 text-center" style="min-width: 130px;">Region / Group</th>
+                                    
+                                    <!-- Dynamic Criteria Headers -->
+                                    @foreach (var crit in criteriaList)
+                                    {
+                                        <th class="py-3 text-center" style="min-width: 140px;">
+                                            <div class="fw-bold text-dark">@crit.Name</div>
+                                            <span class="badge bg-secondary bg-opacity-15 text-secondary mt-1" style="font-size: 0.7rem;">Max: @crit.Percentage.ToString("0.##", CultureInfo.InvariantCulture)</span>
+                                        </th>
+                                    }
+
+                                    <th class="py-3 text-end pe-4" style="min-width: 140px;">Total Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int rank = 1; }
+                                @foreach (var item in rankedContestants)
+                                {
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            @if (rank == 1) { <span class="badge bg-warning text-dark px-2 py-1">1st Place</span> }
+                                            else if (rank == 2) { <span class="badge bg-secondary px-2 py-1">2nd Place</span> }
+                                            else if (rank == 3) { <span class="badge text-white px-2 py-1" style="background-color: #cd7f32;">3rd Place</span> }
+                                            else { <span class="text-muted">#@rank</span> }
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark">#@item.ContestantNumber - @item.ContestantName</div>
+                                        </td>
+                                        <td class="text-center text-muted small">
+                                            @(string.IsNullOrEmpty(item.Region) ? "N/A" : item.Region)
+                                        </td>
+
+                                        <!-- Dynamic Criteria Score Cells -->
+                                        @foreach (var crit in criteriaList)
+                                        {
+                                            decimal scoreVal = item.CriteriaScores.ContainsKey(crit.Id) ? item.CriteriaScores[crit.Id] : 0;
+                                            <td class="text-center font-monospace text-secondary">
+                                                @scoreVal.ToString("0.00", CultureInfo.InvariantCulture)
+                                            </td>
+                                        }
+
+                                        <td class="text-end pe-4 font-monospace fw-bold text-primary fs-5">
+                                            @item.TotalScore.ToString("0.00", CultureInfo.InvariantCulture)
+                                        </td>
+                                    </tr>
+                                    rank++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<EventItem> events = new();
+    private List<Judge> judges = new();
+    private List<Criterion> criteriaList = new();
+    private int selectedEventId;
+    private int selectedJudgeId;
+    private Judge? selectedJudge;
+    private List<ContestantScoreSummary> rankedContestants = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        events = await Db.Events.OrderByDescending(e => e.Id).ToListAsync();
+    }
+
+    private async Task OnEventSelected()
+    {
+        selectedJudgeId = 0;
+        selectedJudge = null;
+        rankedContestants.Clear();
+        criteriaList.Clear();
+
+        if (selectedEventId > 0)
+        {
+            judges = await Db.Judges.Where(j => j.EventId == selectedEventId).OrderBy(j => j.Name).ToListAsync();
+            criteriaList = await Db.Criteria.Where(c => c.EventId == selectedEventId).ToListAsync();
+            
+            if (judges.Any())
+            {
+                await SelectJudge(judges.First().Id);
+            }
+        }
+        else
+        {
+            judges.Clear();
+        }
+    }
+
+    private async Task SelectJudge(int judgeId)
+    {
+        selectedJudgeId = judgeId;
+        if (selectedJudgeId == 0 || selectedEventId == 0) return;
+
+        selectedJudge = await Db.Judges.FindAsync(selectedJudgeId);
+        var contestants = await Db.Contestants.Where(c => c.EventId == selectedEventId).OrderBy(c => c.ContestantNumber).ToListAsync();
+        var scores = await Db.Scores.Where(s => s.JudgeId == selectedJudgeId && s.EventId == selectedEventId).ToListAsync();
+
+        var summaryList = new List<ContestantScoreSummary>();
+
+        foreach (var c in contestants)
+        {
+            decimal totalWeightedScore = 0;
+            var criteriaScoreMap = new Dictionary<int, decimal>();
+
+            foreach (var crit in criteriaList)
+            {
+                var scoreRec = scores.FirstOrDefault(s => s.ContestantId == c.Id && s.CriterionId == crit.Id);
+                decimal rawScore = scoreRec?.ScoreValue ?? 0;
+                
+                criteriaScoreMap[crit.Id] = rawScore;
+                totalWeightedScore += rawScore;
+            }
+
+            summaryList.Add(new ContestantScoreSummary
+            {
+                ContestantId = c.Id,
+                ContestantNumber = c.ContestantNumber,
+                ContestantName = c.Name,
+                Region = c.Region,
+                CriteriaScores = criteriaScoreMap,
+                TotalScore = totalWeightedScore
+            });
+        }
+
+        rankedContestants = summaryList.OrderByDescending(s => s.TotalScore).ToList();
+    }
+
+    public class ContestantScoreSummary
+    {
+        public int ContestantId { get; set; }
+        public int ContestantNumber { get; set; }
+        public string ContestantName { get; set; } = "";
+        public string? Region { get; set; }
+        public Dictionary<int, decimal> CriteriaScores { get; set; } = new();
+        public decimal TotalScore { get; set; }
+    }
+}

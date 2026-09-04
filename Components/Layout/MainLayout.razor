@@ -1,0 +1,65 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+
+@if (isExternalDevice && !IsOnJudgePage)
+{
+    // Force external devices straight to the judge login/portal page
+    <div class="container text-center py-5">
+        <h3>Redirecting to Judge Portal...</h3>
+    </div>
+}
+else
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+
+        <main>
+            <div class="top-row px-4">
+                <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+}
+
+@code {
+    private bool isExternalDevice = false;
+    private bool IsOnJudgePage => Nav.Uri.Contains("/judge"); // Change this to match your JudgePortal route
+
+    protected override void OnInitialized()
+    {
+        var context = HttpContextAccessor.HttpContext;
+        if (context != null)
+        {
+            var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+            
+            // Check if the request is coming from another device on the network
+            // (Localhost usually shows as "127.0.0.1", "::1", or "::ffff:127.0.0.1")
+            if (!string.IsNullOrEmpty(remoteIp) && 
+                remoteIp != "127.0.0.1" && 
+                remoteIp != "::1" && 
+                !remoteIp.EndsWith("127.0.0.1"))
+            {
+                isExternalDevice = true;
+                
+                // If they are on an external device and not on the judge portal, force redirect them
+                if (!IsOnJudgePage)
+                {
+                    Nav.NavigateTo("/judge-portal"); // Replace with your actual JudgePortal route path
+                }
+            }
+        }
+    }
+}

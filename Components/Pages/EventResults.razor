@@ -1,0 +1,192 @@
+@page "/event/{EventId:int}/results"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@inject TabulationService TabulationService
+@inject EventPdfReportService PdfService
+@inject IJSRuntime JS
+@using Microsoft.EntityFrameworkCore
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+@using EventScoringSystem.Services
+
+<PageTitle>Official Tabulation Report & Revelation - NAMCYA</PageTitle>
+
+<div class="container py-4" style="max-width: 1300px;">
+    <!-- Top Action Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <button class="btn btn-outline-secondary btn-sm" @onclick="GoBack">
+        &larr; Back
+    </button>
+    <button class="btn btn-danger btn-sm fw-bold px-4 shadow-sm" @onclick="DownloadPdf">
+        <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download Official PDF Report
+    </button>
+</div>
+
+    @if (currentEvent == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Loading official revelation records...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Main Tabulation Matrix Card -->
+        <div class="card shadow-sm border-0 p-3 p-md-4 bg-white rounded-3 mb-4">
+            <div class="text-center border-bottom pb-3 mb-4">
+                <h5 class="fw-bold text-uppercase mb-1" style="font-size: clamp(0.9rem, 2vw, 1.25rem);">NATIONAL MUSIC COMPETITIONS FOR YOUNG ARTISTS</h5>
+                <p class="text-muted small mb-0">Official Tabulation, Ranking & Revelation Results</p>
+                <h4 class="fw-bold text-dark mt-2 text-break">@currentEvent.Title</h4>
+                <span class="badge bg-primary mt-1">Rank-Sum Method with Fractional Ranking System & Average Tie-Breaker</span>
+            </div>
+
+            <!-- Responsive Tabulation Table -->
+            <div class="table-responsive shadow-none border rounded">
+                <table class="table table-bordered table-striped align-middle text-center mb-0" style="min-width: 800px;">
+                    <thead class="table-dark text-nowrap">
+                        <tr>
+                            <th style="width: 80px;">Overall Rank</th>
+                            <th class="text-start" style="min-width: 200px;">Contestant Name</th>
+                            @foreach (var judge in judges)
+                            {
+                                <th style="min-width: 130px;">
+                                    <div class="text-truncate" style="max-width: 150px;" title="@judge.Name">@judge.Name</div>
+                                    <small class="text-white-50" style="font-size: 0.7rem;">(Score / Rank)</small>
+                                </th>
+                            }
+                            <th style="width: 100px;">Sumrank</th>
+                            <th style="width: 100px;">Final Average</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!results.Any())
+                        {
+                            <tr>
+                                <td colspan="@(4 + judges.Count)" class="text-muted py-4">No scores recorded for this event yet.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var res in results)
+                            {
+                                <tr>
+                                    <td class="fw-bold fs-6 text-primary">
+                                        @(res.OverallRank == 1.5m ? "1.5" : res.OverallRank == 2.5m ? "2.5" : res.OverallRank == 3.5m ? "3.5" : res.OverallRank.ToString("0.#"))
+                                        <span class="d-block text-muted" style="font-size: 0.65rem;">
+                                            @(res.OverallRank <= 1 ? "1st" : res.OverallRank <= 2 ? "2nd" : res.OverallRank <= 3 ? "3rd" : $"{res.OverallRank}th")
+                                        </span>
+                                    </td>
+                                    <td class="text-start fw-semibold text-break" style="max-width: 250px;">
+                                        #@res.Contestant.ContestantNumber - @res.Contestant.Name
+                                        @if (!string.IsNullOrWhiteSpace(res.Contestant.Region))
+                                        {
+                                            <div class="text-muted small fw-normal"><i class="bi bi-geo-alt me-1"></i>@res.Contestant.Region</div>
+                                        }
+                                    </td>
+                                    @foreach (var jd in res.JudgeDetails)
+                                    {
+                                        <td>
+                                            <div class="fw-bold text-dark">@jd.Score.ToString("0.00")%</div>
+                                            <div class="text-muted small" style="font-size: 0.75rem;">Rk: @jd.Rank.ToString("0.#")</div>
+                                        </td>
+                                    }
+                                    <td class="fw-bold fs-6 bg-light text-dark">@res.RankSum.ToString("0.0")</td>
+                                    <td class="fw-bold fs-6 bg-light text-primary">@res.FinalScore.ToString("0.00")%</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detailed Revelation & Explanation Area for Admins and Judges -->
+        <div class="card shadow-sm border-0 p-4 bg-white rounded-3">
+            <h4 class="fw-bold text-dark mb-3">
+                <i class="bi bi-journal-text text-primary me-2"></i>Official Revelation & Calculation Breakdown
+            </h4>
+            <p class="text-muted small mb-4">
+                This section provides a transparent audit trail of how the final ranks and scores were derived for each contestant under the NAMCYA scoring guidelines.
+            </p>
+
+            <div class="vstack gap-4">
+                @foreach (var res in results)
+                {
+                    <div class="p-3 border rounded-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                            <div>
+                                <span class="badge bg-dark me-2">Rank: @(res.OverallRank.ToString("0.#"))</span>
+                                <h5 class="fw-bold text-dark d-inline mb-0">#@res.Contestant.ContestantNumber &mdash; @res.Contestant.Name</h5>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success me-1">Sumrank: @res.RankSum.ToString("0.0")</span>
+                                <span class="badge bg-primary">Final Average Score: @res.FinalScore.ToString("0.00")%</span>
+                            </div>
+                        </div>
+                        <div class="small text-secondary vstack gap-1">
+                            <div>
+                                <strong>Judge Breakdown:</strong>
+                                @foreach (var jd in res.JudgeDetails)
+                                {
+                                    var judgeObj = judges.FirstOrDefault(j => j.Id == jd.JudgeId);
+                                    string judgeName = judgeObj?.Name ?? $"Judge {jd.JudgeId}";
+                                    <span class="ms-2 badge bg-white text-dark border">
+                                        @judgeName: Score <strong>@jd.Score.ToString("0.00")%</strong> &rarr; Rank <strong>@jd.Rank.ToString("0.#")</strong>
+                                    </span>
+                                }
+                            </div>
+                            <div class="mt-1 text-muted">
+                                <em>Rule Application Explanation:</em> 
+                                @if (res.OverallRank % 1 != 0)
+                                {
+                                    <span>Contestant is tied with an identical Sumrank and Final Average score, resulting in a shared fractional rank of <strong>@res.OverallRank.ToString("0.#")</strong>.</span>
+                                }
+                                else if (results.Count(r => r.RankSum == res.RankSum) > 1)
+                                {
+                                    <span>Contestant tied on Sumrank (@res.RankSum.ToString("0.0")), but the tie was successfully broken by the Final Average score comparison (<strong>@res.FinalScore.ToString("0.00")%</strong>).</span>
+                                }
+                                else
+                                {
+                                    <span>Contestant secured this position cleanly via unique primary Rank-Sum aggregation across all judges.</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int EventId { get; set; }
+
+    private EventItem? currentEvent;
+    private List<Judge> judges = new();
+    private List<ContestantResultModel> results = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentEvent = await Db.Events.FindAsync(EventId);
+        if (currentEvent != null)
+        {
+            judges = await Db.Judges.Where(j => j.EventId == EventId).OrderBy(j => j.Id).ToListAsync();
+            results = await TabulationService.ComputeEventResultsAsync(EventId);
+        }
+    }
+
+    private async Task DownloadPdf()
+    {
+        var pdfBytes = await PdfService.GenerateEventReportPdfAsync(EventId);
+        var fileName = $"NAMCYA_Official_Results_Event_{EventId}.pdf";
+        
+        using var streamRef = new DotNetStreamReference(stream: new MemoryStream(pdfBytes));
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+
+    private async Task GoBack()
+{
+    await JS.InvokeVoidAsync("history.back");
+}
+}

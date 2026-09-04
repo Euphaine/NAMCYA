@@ -1,0 +1,578 @@
+@page "/events"
+@rendermode InteractiveServer
+@inject AppDbContext Db
+@using Microsoft.EntityFrameworkCore
+@using EventScoringSystem.Data
+@using EventScoringSystem.Models
+@inject NavigationManager Navigation
+
+<PageTitle>Event Management Dashboard</PageTitle>
+
+<div class="container-fluid px-3 px-md-4 py-4">
+    <!-- Header Banner -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="bi bi-calendar-check text-primary me-2"></i>Event Management Dashboard
+            </h2>
+            <p class="text-muted small mb-0">Overview of all events. Click 'Manage' on any event to configure contestants, judges, and criteria.</p>
+        </div>
+    </div>
+
+    <!-- Top Section: Event Creation & Event Directory Grid -->
+    <div class="row g-4 mb-4">
+        <!-- Create New Event Card -->
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="text-dark fw-bold mb-0">
+                        <i class="bi bi-plus-circle text-success me-2"></i>Create New Event
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <EditForm Model="newEvent" OnValidSubmit="CreateEvent" FormName="createEventForm">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Event Title</label>
+                            <InputText @bind-Value="newEvent.Title" class="form-control" placeholder="e.g., National Piano Finals" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Description</label>
+                            <InputText @bind-Value="newEvent.Description" class="form-control" placeholder="e.g., Senior Category Solo" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-semibold shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Save Event
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Events Directory Grid -->
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="text-dark fw-bold mb-0">
+                        <i class="bi bi-folder2-open text-primary me-2"></i>Active Events Directory
+                    </h5>
+                    <span class="badge bg-primary rounded-pill">@(events?.Count ?? 0) Events</span>
+                </div>
+                <div class="card-body">
+                    @if (events == null || !events.Any())
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-info-circle display-6 mb-2 d-block"></i><span>No events found. Create one to begin.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Event Title</th>
+                                        <th>Description</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ev in events)
+                                    {
+                                        var isSelected = selectedEventId == ev.Id;
+                                        <tr class="@(isSelected ? "table-active fw-bold" : "")">
+                                            <td>@ev.Title</td>
+                                            <td class="text-muted small">@ev.Description</td>
+                                            <td class="text-end">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn @(isSelected ? "btn-primary" : "btn-outline-primary")" @onclick="() => SelectEvent(ev.Id)">
+                                                        @(isSelected ? "Managing" : "Manage")
+                                                    </button>
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteEvent(ev.Id)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: C, J, C Management Cards (Active Event Required) -->
+    @if (selectedEventId > 0)
+    {
+        <div class="card shadow-sm border-0 mb-4 bg-light border-start border-primary border-4">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <span class="badge bg-primary text-uppercase mb-1">Active Workspace</span>
+                    <h4 class="fw-bold text-dark mb-0">@selectedEventTitle <span class="badge bg-secondary fs-6 ms-2">ID: @selectedEventId</span></h4>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/event/@selectedEventId/tabulation" class="btn btn-dark fw-semibold shadow-sm">
+                        <i class="bi bi-speedometer2 me-1"></i> Live Tabulation
+                    </a>
+                    <a href="/event/@selectedEventId/results" class="btn btn-primary fw-semibold shadow-sm">
+                        <i class="bi bi-file-earmark-text me-1"></i> Official Results & Print
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 1st Card: Contestants (C) -->
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people text-primary me-2"></i>Contestants</h6>
+                        <span class="badge bg-primary rounded-pill">@contestants.Count</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3 bg-light p-3 rounded">
+                            <div class="vstack gap-2 mb-2">
+                                <div class="d-flex gap-2">
+                                    <input @bind="newContestantNumber" type="number" placeholder="No." class="form-control" style="max-width: 75px;" />
+                                    <input @bind="newContestantName" placeholder="Contestant Name" class="form-control" />
+                                </div>
+                                <input @bind="newContestantRegion" placeholder="Region / Affiliation (e.g., Region XI)" class="form-control" />
+                            </div>
+                            <button class="btn btn-primary btn-sm w-100 fw-semibold shadow-sm" @onclick="AddContestant">
+                                <i class="bi bi-plus-lg me-1"></i> Add Contestant
+                            </button>
+                        </div>
+                        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" style="max-height: 350px;">
+                            @if (!contestants.Any())
+                            {
+                                <li class="list-group-item text-muted text-center py-3 small">No contestants added yet.</li>
+                            }
+                            else
+                            {
+                                @foreach (var c in contestants)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-0">
+                                        @if (editingContestantId == c.Id)
+                                        {
+                                            <div class="vstack gap-1 w-100 me-1">
+                                                <div class="d-flex gap-1">
+                                                    <input @bind="editContestantNumber" type="number" class="form-control form-control-sm" style="max-width: 60px;" />
+                                                    <input @bind="editContestantName" class="form-control form-control-sm" placeholder="Name" />
+                                                </div>
+                                                <div class="d-flex gap-1">
+                                                    <input @bind="editContestantRegion" class="form-control form-control-sm" placeholder="Region" />
+                                                    <button class="btn btn-sm btn-primary" @onclick="() => SaveContestantEdit(c.Id)">Save</button>
+                                                    <button class="btn btn-sm btn-secondary" @onclick="CancelContestantEdit">X</button>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-truncate me-2">
+                                                <span class="font-monospace"><strong>#@c.ContestantNumber</strong> &mdash; @c.Name</span>
+                                                @if (!string.IsNullOrWhiteSpace(c.Region))
+                                                {
+                                                    <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>@c.Region</div>
+                                                }
+                                            </div>
+                                            <div class="btn-group btn-group-sm flex-shrink-0">
+                                                <button class="btn btn-outline-secondary py-0 px-2" @onclick="() => StartContestantEdit(c)">Edit</button>
+                                                <button class="btn btn-outline-danger py-0 px-2" @onclick="() => DeleteContestant(c.Id)"><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        }
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2nd Card: Judges (J) -->
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-award text-success me-2"></i>Judges & PINs</h6>
+                        <span class="badge bg-success rounded-pill">@judges.Count</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3 bg-light p-3 rounded">
+                            <div class="input-group mb-2">
+                                <input @bind="newJudgeName" placeholder="Judge Full Name" class="form-control" />
+                            </div>
+                            <button class="btn btn-success btn-sm w-100 fw-semibold shadow-sm" @onclick="AddJudge">
+                                <i class="bi bi-plus-lg me-1"></i> Add Judge & Generate PIN
+                            </button>
+                        </div>
+                        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" style="max-height: 350px;">
+                            @if (!judges.Any())
+                            {
+                                <li class="list-group-item text-muted text-center py-3 small">No judges added yet.</li>
+                            }
+                            else
+                            {
+                                @foreach (var j in judges)
+                                {
+                                    <li class="list-group-item d-flex flex-column gap-1 py-2 px-0">
+                                        <div class="d-flex justify-content-between align-items-center w-100">
+                                            @if (editingJudgeId == j.Id)
+                                            {
+                                                <div class="d-flex gap-1 w-100 me-1">
+                                                    <input @bind="editJudgeName" class="form-control form-control-sm" />
+                                                    <button class="btn btn-sm btn-primary" @onclick="() => SaveJudgeEdit(j.Id)">Save</button>
+                                                    <button class="btn btn-sm btn-secondary" @onclick="CancelJudgeEdit">X</button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-semibold text-truncate me-2">@j.Name</span>
+                                                <div class="btn-group btn-group-sm flex-shrink-0">
+                                                    <button class="btn btn-outline-secondary py-0 px-2" @onclick="() => StartJudgeEdit(j)">Edit</button>
+                                                    <button class="btn btn-outline-danger py-0 px-2" @onclick="() => DeleteJudge(j.Id)"><i class="bi bi-trash"></i></button>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-dark font-monospace px-2 py-1"><i class="bi bi-key me-1"></i>PIN: @j.PinCode</span>
+                                        </div>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3rd Card: Criteria (C) -->
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-info me-2"></i>Scoring Criteria</h6>
+                        <span class="badge bg-info text-dark rounded-pill">@criteria.Count</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        @{
+                            var totalPercentage = criteria.Sum(cr => cr.Percentage);
+                        }
+                        <div class="alert @(totalPercentage == 100 ? "alert-success" : totalPercentage > 100 ? "alert-danger" : "alert-warning") py-2 px-3 small mb-3 d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi @(totalPercentage == 100 ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-1"></i>
+                                Total Weight: <strong>@totalPercentage%</strong> / 100%
+                            </span>
+                            @if (totalPercentage == 100)
+                            {
+                                <span class="badge bg-success">Complete</span>
+                            }
+                            else if (totalPercentage > 100)
+                            {
+                                <span class="badge bg-danger">Exceeds 100%</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-dark">Incomplete</span>
+                            }
+                        </div>
+
+                        <div class="mb-3 bg-light p-3 rounded">
+                            <div class="input-group mb-2">
+                                <input @bind="newCriterionName" placeholder="Criterion Name" class="form-control" />
+                                <input @bind="newCriterionPercentage" type="number" placeholder="%" class="form-control" style="max-width: 80px;" />
+                            </div>
+                            <button class="btn btn-info btn-sm w-100 fw-semibold text-dark shadow-sm" @onclick="AddCriterion">
+                                <i class="bi bi-plus-lg me-1"></i> Add Criterion
+                            </button>
+                        </div>
+                        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" style="max-height: 350px;">
+                            @if (!criteria.Any())
+                            {
+                                <li class="list-group-item text-muted text-center py-3 small">No criteria added yet.</li>
+                            }
+                            else
+                            {
+                                @foreach (var cr in criteria)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-0">
+                                        @if (editingCriterionId == cr.Id)
+                                        {
+                                            <div class="d-flex gap-1 w-100 me-1">
+                                                <input @bind="editCriterionName" class="form-control form-control-sm" />
+                                                <input @bind="editCriterionPercentage" type="number" class="form-control form-control-sm" style="max-width: 60px;" />
+                                                <button class="btn btn-sm btn-primary" @onclick="() => SaveCriterionEdit(cr.Id)">Save</button>
+                                                <button class="btn btn-sm btn-secondary" @onclick="CancelCriterionEdit">X</button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-truncate me-2">@cr.Name <span class="badge bg-secondary ms-1">@cr.Percentage%</span></span>
+                                            <div class="btn-group btn-group-sm flex-shrink-0">
+                                                <button class="btn btn-outline-secondary py-0 px-2" @onclick="() => StartCriterionEdit(cr)">Edit</button>
+                                                <button class="btn btn-outline-danger py-0 px-2" @onclick="() => DeleteCriterion(cr.Id)"><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        }
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0 bg-white text-center py-5">
+            <div class="card-body py-5">
+                <div class="display-5 text-muted mb-3">
+                    <i class="bi bi-cursor"></i>
+                </div>
+                <h4 class="fw-bold text-dark">No Event Selected</h4>
+                <p class="text-muted mb-0">Please create a new event above or click **Manage** on any event from the directory table to handle Contestants, Judges, and Criteria.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<EventItem>? events;
+    private EventItem newEvent = new();
+    
+    private int selectedEventId = 0;
+    private string selectedEventTitle = "";
+    private List<Contestant> contestants = new();
+    private List<Judge> judges = new();
+    private List<Criterion> criteria = new();
+
+    private string newContestantName = "";
+    private int newContestantNumber = 1;
+    private string newContestantRegion = "";
+    
+    private string newJudgeName = "";
+    private string newCriterionName = "";
+    private decimal newCriterionPercentage;
+
+    private int editingContestantId = 0;
+    private string editContestantName = "";
+    private int editContestantNumber;
+    private string editContestantRegion = "";
+
+    private int editingJudgeId = 0;
+    private string editJudgeName = "";
+
+    private int editingCriterionId = 0;
+    private string editCriterionName = "";
+    private decimal editCriterionPercentage;
+    [SupplyParameterFromQuery]
+public int? SelectedEventId { get; set;}
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEvents();
+    }
+
+    private async Task LoadEvents()
+    {
+        events = await Db.Events.ToListAsync();
+    }
+
+    private async Task CreateEvent()
+    {
+        if (string.IsNullOrWhiteSpace(newEvent.Title)) return;
+        Db.Events.Add(newEvent);
+        await Db.SaveChangesAsync();
+        
+        // Auto-select the newly created event to save extra clicks
+        selectedEventId = newEvent.Id;
+        selectedEventTitle = newEvent.Title;
+        
+        newEvent = new();
+        await LoadEvents();
+        await LoadEventDetails();
+    }
+
+    private async Task SelectEvent(int id)
+    {
+        selectedEventId = id;
+        var ev = events?.FirstOrDefault(x => x.Id == id);
+        selectedEventTitle = ev?.Title ?? "";
+        if (selectedEventId > 0)
+        {
+            await LoadEventDetails();
+        }
+    }
+
+    private async Task LoadEventDetails()
+    {
+        contestants = await Db.Contestants.Where(c => c.EventId == selectedEventId).OrderBy(c => c.ContestantNumber).ToListAsync();
+        judges = await Db.Judges.Where(j => j.EventId == selectedEventId).ToListAsync();
+        criteria = await Db.Criteria.Where(cr => cr.EventId == selectedEventId).ToListAsync();
+    }
+
+    private async Task AddContestant()
+    {
+        if (string.IsNullOrWhiteSpace(newContestantName)) return;
+        Db.Contestants.Add(new Contestant { 
+            EventId = selectedEventId, 
+            Name = newContestantName, 
+            ContestantNumber = newContestantNumber,
+            Region = newContestantRegion 
+        });
+        await Db.SaveChangesAsync();
+        newContestantName = "";
+        newContestantRegion = "";
+        newContestantNumber++;
+        await LoadEventDetails();
+    }
+
+    private async Task AddJudge()
+    {
+        if (string.IsNullOrWhiteSpace(newJudgeName)) return;
+        var randomPin = Random.Shared.Next(100000, 999999).ToString();
+        Db.Judges.Add(new Judge { EventId = selectedEventId, Name = newJudgeName, PinCode = randomPin });
+        await Db.SaveChangesAsync();
+        newJudgeName = "";
+        await LoadEventDetails();
+    }
+
+    private async Task AddCriterion()
+    {
+        if (string.IsNullOrWhiteSpace(newCriterionName)) return;
+        Db.Criteria.Add(new Criterion { EventId = selectedEventId, Name = newCriterionName, Percentage = newCriterionPercentage });
+        await Db.SaveChangesAsync();
+        newCriterionName = "";
+        newCriterionPercentage = 0;
+        await LoadEventDetails();
+    }
+
+    private void StartContestantEdit(Contestant c)
+    {
+        editingContestantId = c.Id;
+        editContestantName = c.Name;
+        editContestantNumber = c.ContestantNumber;
+        editContestantRegion = c.Region ?? "";
+    }
+
+    private void CancelContestantEdit() => editingContestantId = 0;
+
+    private async Task SaveContestantEdit(int id)
+    {
+        var item = await Db.Contestants.FindAsync(id);
+        if (item != null)
+        {
+            item.Name = editContestantName;
+            item.ContestantNumber = editContestantNumber;
+            item.Region = editContestantRegion;
+            await Db.SaveChangesAsync();
+        }
+        editingContestantId = 0;
+        await LoadEventDetails();
+    }
+
+    private async Task DeleteContestant(int id)
+    {
+        var item = await Db.Contestants.FindAsync(id);
+        if (item != null)
+        {
+            Db.Contestants.Remove(item);
+            await Db.SaveChangesAsync();
+            await LoadEventDetails();
+        }
+    }
+
+    private void StartJudgeEdit(Judge j)
+    {
+        editingJudgeId = j.Id;
+        editJudgeName = j.Name;
+    }
+
+    private void CancelJudgeEdit() => editingJudgeId = 0;
+
+    private async Task SaveJudgeEdit(int id)
+    {
+        var item = await Db.Judges.FindAsync(id);
+        if (item != null)
+        {
+            item.Name = editJudgeName;
+            await Db.SaveChangesAsync();
+        }
+        editingJudgeId = 0;
+        await LoadEventDetails();
+    }
+
+    private async Task DeleteJudge(int id)
+    {
+        var item = await Db.Judges.FindAsync(id);
+        if (item != null)
+        {
+            Db.Judges.Remove(item);
+            await Db.SaveChangesAsync();
+            await LoadEventDetails();
+        }
+    }
+
+    private void StartCriterionEdit(Criterion cr)
+    {
+        editingCriterionId = cr.Id;
+        editCriterionName = cr.Name;
+        editCriterionPercentage = cr.Percentage;
+    }
+
+    private void CancelCriterionEdit() => editingCriterionId = 0;
+
+    private async Task SaveCriterionEdit(int id)
+    {
+        var item = await Db.Criteria.FindAsync(id);
+        if (item != null)
+        {
+            item.Name = editCriterionName;
+            item.Percentage = editCriterionPercentage;
+            await Db.SaveChangesAsync();
+        }
+        editingCriterionId = 0;
+        await LoadEventDetails();
+    }
+
+    private async Task DeleteCriterion(int id)
+    {
+        var item = await Db.Criteria.FindAsync(id);
+        if (item != null)
+        {
+            Db.Criteria.Remove(item);
+            await Db.SaveChangesAsync();
+            await LoadEventDetails();
+        }
+    }
+
+    private async Task DeleteEvent(int eventId)
+    {
+        var eventToDelete = await Db.Events.FindAsync(eventId);
+        if (eventToDelete != null)
+        {
+            var relatedContestants = Db.Contestants.Where(c => c.EventId == eventId);
+            var relatedJudges = Db.Judges.Where(j => j.EventId == eventId);
+            var relatedCriteria = Db.Criteria.Where(cr => cr.EventId == eventId);
+
+            Db.Contestants.RemoveRange(relatedContestants);
+            Db.Judges.RemoveRange(relatedJudges);
+            Db.Criteria.RemoveRange(relatedCriteria);
+            Db.Events.Remove(eventToDelete);
+            await Db.SaveChangesAsync();
+
+            if (selectedEventId == eventId)
+            {
+                selectedEventId = 0;
+                selectedEventTitle = "";
+            }
+            await LoadEvents();
+        }
+    }
+    protected override void OnParametersSet()
+{
+    if (SelectedEventId.HasValue)
+    {
+        // Call whatever method you use to select/load the event details
+        SelectEvent(SelectedEventId.Value);
+    }
+}
+}
