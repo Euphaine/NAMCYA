@@ -5,64 +5,56 @@
 @using System.Globalization
 @using EventScoringSystem.Data
 @using EventScoringSystem.Models
-@using System.Net
-@using System.Net.Sockets
-@using System.Net.NetworkInformation
 @inject NavigationManager Navigation
 
-<div class="container-fluid px-3 px-md-4 py-4 pastel-theme-wrapper">
+<div class="judge-portal-root">
     
-    <!-- Top Branding / Logo Header & Welcome Banner Display (Only shown when NOT logged in) -->
+    <!-- Top Branding & Welcome Banner Display (Only shown when NOT logged in) -->
     @if (!isLoggedIn)
     {
-        <div class="row justify-content-center mb-4">
-            <div class="col-12 col-xl-10">
-                <div class="card shadow-sm border-0 pastel-card overflow-hidden">
-                    <div class="position-relative">
-                        <img src="/images/banner.png" alt="Event Banner" class="w-100 object-fit-cover pastel-banner-img" onerror="this.style.display='none'" />
-                        <div class="pastel-banner-overlay p-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 text-center text-md-start">
-                            <div class="d-flex align-items-center gap-3">
-                                <img src="/images/logo.png" alt="System Logo" class="pastel-logo" onerror="this.style.display='none'" />
-                                <div>
-                                    <h3 class="fw-extrabold pastel-title mb-1">Judge Scoring Portal</h3>
-                                    <p class="text-secondary small mb-0 fw-medium">National Musical Competitions For Young Artists (NAMCYA) • Secure Evaluation Interface</p>
-                                </div>
+        <div class="container py-4">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="md-card overflow-hidden shadow-sm">
+                        <div class="position-relative">
+                            <img src="/images/banner.png" alt="Event Banner" class="w-100 md-banner-img" onerror="this.style.display='none'" />
+                            <div class="md-banner-overlay p-4 text-center">
+                                <img src="/images/logo.png" alt="System Logo" class="md-logo mb-2" onerror="this.style.display='none'" />
+                                <h3 class="fw-bold md-title mb-1">Judge Scoring Portal</h3>
+                                <p class="text-muted small mb-0 fw-medium">National Musical Competitions For Young Artists (NAMCYA)</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
 
-    @if (!isLoggedIn)
-    {
-        <!-- PIN Login Card -->
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-                <div class="card shadow-lg border-0 pastel-card overflow-hidden">
-                    <div class="card-header pastel-header py-3 text-white text-center">
-                        <h5 class="mb-0 fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Judge Authentication</h5>
-                    </div>
-                    <div class="card-body p-4 p-md-5">
-                        <div class="mb-4 text-center">
-                            <div class="pastel-icon-circle mx-auto mb-3">
-                                <i class="bi bi-key-fill fs-3 text-secondary"></i>
-                            </div>
-                            <label class="form-label fw-semibold text-secondary">Enter Your 6-Digit PIN</label>
-                            <input @bind="enteredPin" type="password" maxlength="6" class="form-control form-control-lg text-center font-monospace pastel-input fs-3" placeholder="------" />
+            <!-- PIN Login Card -->
+            <div class="row justify-content-center mt-3">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="md-card overflow-hidden shadow-sm">
+                        <div class="md-header py-3 text-center">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Judge Authentication</h5>
                         </div>
-                        
-                        @if (!string.IsNullOrEmpty(loginError))
-                        {
-                            <div class="alert alert-danger py-2 mb-3 text-center small rounded-3 shadow-sm">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i> @loginError
+                        <div class="card-body p-4 p-md-5">
+                            <div class="mb-4 text-center">
+                                <div class="md-icon-circle mx-auto mb-3">
+                                    <i class="bi bi-key-fill fs-3 text-primary"></i>
+                                </div>
+                                <label class="form-label fw-semibold text-secondary">Enter Your 6-Digit PIN</label>
+                                <input @bind="enteredPin" type="password" maxlength="6" class="form-control form-control-lg text-center font-monospace md-input fs-3 shadow-none" placeholder="------" />
                             </div>
-                        }
+                            
+                            @if (!string.IsNullOrEmpty(loginError))
+                            {
+                                <div class="alert alert-danger py-2 mb-3 text-center small rounded-3 border-0 bg-danger bg-opacity-10 text-danger">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> @loginError
+                                </div>
+                            }
 
-                        <button class="btn pastel-btn-primary w-100 py-3 fw-bold rounded-pill shadow-sm transition-all" @onclick="AuthenticateJudge">
-                            Access Scoring Sheet <i class="bi bi-arrow-right ms-1"></i>
-                        </button>
+                            <button class="btn md-btn-primary w-100 py-3 fw-bold rounded-pill shadow-none" @onclick="AuthenticateJudge">
+                                Access Scoring Sheet <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -70,362 +62,323 @@
     }
     else
     {
-        <!-- Welcome Banner Drawover Modal / Overlay Animation -->
+        <!-- Welcome Banner Drawover Modal Animation -->
         @if (showWelcomeOverlay)
         {
             <div class="welcome-overlay-backdrop @(isOverlayFadingOut ? "fade-out" : "")">
-                <div class="welcome-overlay-card shadow-lg text-center p-4 p-md-5">
-                    <div class="mb-3">
-                        <img src="/images/logo.png" alt="Logo" class="pastel-logo mb-3" onerror="this.style.display='none'" />
-                    </div>
-                    <div class="banner-drawover-wrapper mb-4 rounded-4 overflow-hidden shadow">
+                <div class="welcome-overlay-card text-center p-4 p-md-5">
+                    <img src="/images/logo.png" alt="Logo" class="md-logo mb-3" onerror="this.style.display='none'" />
+                    <div class="banner-drawover-wrapper mb-4 rounded-4 overflow-hidden shadow-sm">
                         <img src="/images/banner.png" alt="Welcome Banner" class="w-100 banner-drawover-img" onerror="this.style.display='none'" />
                     </div>
-                    <h2 class="fw-extrabold text-dark mb-2">Welcome, @currentJudge?.Name!</h2>
+                    <h2 class="fw-bold text-dark mb-2">Welcome, @currentJudge?.Name!</h2>
                     <p class="text-secondary fw-medium mb-4">You are securely logged into <span class="text-dark fw-bold">@currentEvent?.Title</span></p>
-                    <button class="btn pastel-btn-submit px-5 py-3 fw-bold rounded-pill shadow-sm fs-5" @onclick="DismissWelcomeOverlay">
+                    <button class="btn md-btn-submit px-5 py-3 fw-bold rounded-pill shadow-none fs-5" @onclick="DismissWelcomeOverlay">
                         Start Scoring <i class="bi bi-arrow-right ms-2"></i>
                     </button>
                 </div>
             </div>
         }
 
-        <!-- Active Session Metadata Bar with Logout and Submit Buttons -->
-        <div class="row justify-content-center mb-4">
-            <div class="col-12 col-xl-10">
-                <div class="card shadow-sm border-0 pastel-card p-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <img src="/images/logo.png" alt="Logo" style="height: 40px;" class="d-none d-sm-block" onerror="this.style.display='none'" />
-                        <div>
-                            <span class="badge bg-white text-dark px-3 py-1 rounded-pill fw-bold shadow-sm mb-1 border">
-                                <i class="bi bi-award-fill text-warning me-1"></i> Active Session
-                            </span>
-                            <h5 class="mb-0 fw-bold text-dark">@currentEvent?.Title</h5>
-                        </div>
+        <!-- Active Session Header Bar -->
+        <div class="container-fluid bg-white border-bottom sticky-top py-3 px-3 px-md-4 shadow-2xs">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 text-center text-md-start">
+                    <img src="/images/logo.png" alt="Logo" style="height: 40px;" onerror="this.style.display='none'" />
+                    <div>
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-bold mb-1 border-0">
+                            <i class="bi bi-award-fill me-1"></i> Active Session
+                        </span>
+                        <h5 class="mb-0 fw-bold text-dark">@currentEvent?.Title</h5>
                     </div>
-                    <div class="d-flex flex-wrap align-items-center gap-3">
-                        <span class="text-secondary small fw-medium"><i class="bi bi-person-badge me-1"></i> Judge: <span class="text-dark fw-bold">@currentJudge?.Name</span></span>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn pastel-btn-submit fw-bold px-3 py-2 rounded-pill shadow-sm" @onclick="SubmitScores">
-                                <i class="bi bi-check2-all me-1"></i> Submit Scores
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm fw-semibold px-3 py-2 rounded-pill bg-white shadow-sm" @onclick="Logout">
-                                <i class="bi bi-box-arrow-right me-1"></i> Logout
-                            </button>
-                        </div>
-                    </div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
+                    <span class="text-secondary small fw-medium me-2"><i class="bi bi-person-badge me-1"></i> Judge: <span class="text-dark fw-bold">@currentJudge?.Name</span></span>
+                    
+                    <button class="btn btn-outline-secondary fw-semibold px-3 py-2 rounded-pill bg-light border-0" @onclick="TogglePersonalRanking">
+                        <i class="bi @(showPersonalRanking ? "bi-table" : "bi-bar-chart-steps") me-1"></i> 
+                        @(showPersonalRanking ? "Score Sheet" : "My Rankings")
+                    </button>
+
+                    <button class="btn md-btn-submit fw-bold px-3 py-2 rounded-pill shadow-none" @onclick="SubmitScores">
+                        <i class="bi bi-check2-all me-1"></i> Submit
+                    </button>
+                    
+                    <button class="btn btn-outline-danger fw-semibold px-3 py-2 rounded-pill bg-light border-0" @onclick="Logout">
+                        <i class="bi bi-box-arrow-right me-1"></i> Logout
+                    </button>
                 </div>
             </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="row justify-content-center mb-4">
-                <div class="col-12 col-xl-10">
-                    <div class="alert pastel-alert-success alert-dismissible fade show shadow-sm rounded-3 mb-0" role="alert">
-                        <i class="bi bi-check-circle-fill me-2"></i> @successMessage
-                        <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
-                    </div>
-                </div>
-            </div>
-        }
-
-        @if (contestants == null || !contestants.Any() || criteria == null || !criteria.Any())
-        {
-            <div class="row justify-content-center">
-                <div class="col-12 col-xl-10">
-                    <div class="alert pastel-alert-warning shadow-sm rounded-3 p-4">
-                        <i class="bi bi-exclamation-circle-fill me-2"></i> The administrator has not finished setting up contestants or criteria for this event yet. Please check back shortly.
-                    </div>
-                </div>
-            </div>
-        }
-        else
-        {
-            <!-- Scoring Interface Table Card -->
-            <div class="row justify-content-center">
-                <div class="col-12 col-xl-10">
-                    <div class="card shadow-lg border-0 pastel-card rounded-4 mb-5">
-                        <div class="card-header pastel-table-header py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <div>
-                                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-table me-2 text-primary"></i>Official Score Sheet</h5>
-                                <p class="text-muted small mb-0">Adjust touch sliders or input numbers directly. Scores sync automatically.</p>
-                            </div>
-                            <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
-                                <i class="bi bi-phone-vibrate me-1"></i> Mobile & Touch Optimized
-                            </span>
+        <div class="container-fluid px-3 px-md-4 py-4">
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="row justify-content-center mb-4">
+                    <div class="col-12 col-xxl-10">
+                        <div class="alert md-alert-success alert-dismissible fade show rounded-3 mb-0 border-0 shadow-none" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i> @successMessage
+                            <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
                         </div>
-                        
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0 align-middle pastel-table">
-                                    <thead class="pastel-thead">
-                                        <tr>
-                                            <th class="text-start py-3 ps-4" style="min-width: 200px;">Contestant</th>
-                                            @foreach (var crit in criteria)
-                                            {
-                                                <th class="text-center py-3 px-3" style="min-width: 260px;">
-                                                    <div class="fw-bold text-dark fs-7">@crit.Name</div>
-                                                    <span class="badge bg-secondary bg-opacity-15 text-secondary mt-1">Weight: @crit.Percentage.ToString("0.##", CultureInfo.InvariantCulture)%</span>
-                                                </th>
-                                            }
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var c in contestants)
-                                        {
+                    </div>
+                </div>
+            }
+
+            @if (contestants == null || !contestants.Any() || criteria == null || !criteria.Any())
+            {
+                <div class="row justify-content-center">
+                    <div class="col-12 col-xxl-10">
+                        <div class="alert md-alert-warning rounded-3 p-4 border-0 shadow-none">
+                            <i class="bi bi-exclamation-circle-fill me-2"></i> The administrator has not finished setting up contestants or criteria for this event yet.
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (showPersonalRanking)
+            {
+                <!-- Personal Ranking / Tie-Breaker View Card -->
+                <div class="row justify-content-center">
+                    <div class="col-12 col-xxl-10">
+                        <div class="md-card rounded-4 mb-5 overflow-hidden shadow-sm">
+                            <div class="md-table-header py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>Your Personal Standings & Ranks</h5>
+                                    <p class="text-muted small mb-0">Review computed totals per contestant to spot and resolve ties.</p>
+                                </div>
+                                <span class="badge bg-primary text-white px-3 py-2 rounded-pill fw-medium">
+                                    <i class="bi bi-shield-check me-1"></i> Judge: @currentJudge?.Name
+                                </span>
+                            </div>
+                            
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0 align-middle md-table">
+                                        <thead class="md-thead">
                                             <tr>
-                                                <!-- Contestant Info Column -->
-                                                <td class="fw-semibold bg-light bg-opacity-50 py-3 ps-4">
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <div class="pastel-contestant-badge font-monospace shadow-sm">
-                                                            #@c.ContestantNumber
-                                                        </div>
-                                                        <div>
-                                                            <div class="fw-bold text-dark text-break">@c.Name</div>
-                                                            @if (!string.IsNullOrWhiteSpace(c.Region))
-                                                            {
-                                                                <div class="text-muted small" style="font-size: 0.75rem;"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@c.Region</div>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                </td>
+                                                <th class="text-center py-3 ps-4" style="width: 90px;">Rank</th>
+                                                <th class="text-start py-3">Contestant</th>
+                                                <th class="text-center py-3">Breakdown Calculation</th>
+                                                <th class="text-center py-3 pe-4" style="min-width: 140px;">Total Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                var rankedContestants = contestants.Select(c => {
+                                                    decimal total = 0;
+                                                    foreach (var crit in criteria)
+                                                    {
+                                                        var scoreRec = existingScores.FirstOrDefault(s => s.ContestantId == c.Id && s.CriterionId == crit.Id);
+                                                        total += scoreRec?.ScoreValue ?? 0;
+                                                    }
+                                                    return new { Contestant = c, TotalScore = total };
+                                                })
+                                                .OrderByDescending(x => x.TotalScore)
+                                                .ToList();
 
-                                                <!-- Criteria Scoring Columns -->
-                                                @foreach (var crit in criteria)
+                                                int rank = 1;
+                                                decimal? lastScore = null;
+                                                int displayRank = 1;
+                                            }
+
+                                            @foreach (var item in rankedContestants)
+                                            {
+                                                if (lastScore == null || item.TotalScore != lastScore)
                                                 {
-                                                    <td class="align-middle py-3 px-3">
-                                                        <div class="d-flex flex-column gap-2 p-2 bg-white rounded-3 border border-opacity-25 shadow-2xs">
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <span class="small text-muted fw-semibold" style="font-size: 0.7rem;">SCORE (MAX @crit.Percentage.ToString("0.##", CultureInfo.InvariantCulture))</span>
-                                                                <span class="font-monospace fw-bold text-primary fs-6 px-2 py-0.5 bg-primary bg-opacity-10 rounded">
-                                                                    @GetFormattedScore(c.Id, crit.Id)
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <!-- Range Slider for Touch -->
-                                                                <input type="range" 
-                                                                       min="0" 
-                                                                       max="@crit.Percentage.ToString(CultureInfo.InvariantCulture)" 
-                                                                       step="0.01"
-                                                                       class="form-range flex-grow-1 custom-range"
-                                                                       value="@GetFormattedScore(c.Id, crit.Id)"
-                                                                       @oninput="@(e => UpdateScore(c.Id, crit.Id, e.Value))" />
+                                                    displayRank = rank;
+                                                    lastScore = item.TotalScore;
+                                                }
+                                                rank++;
 
-                                                                <!-- Numeric Input Box -->
-                                                                <input type="number" 
-                                                                       min="0" 
-                                                                       max="@crit.Percentage.ToString(CultureInfo.InvariantCulture)" 
-                                                                       step="0.01"
-                                                                       class="form-control form-control-sm text-center font-monospace fw-bold pastel-input" 
-                                                                       style="width: 75px; height: 38px;"
-                                                                       value="@GetFormattedScore(c.Id, crit.Id)"
-                                                                       @onchange="@(e => UpdateScore(c.Id, crit.Id, e.Value))" />
+                                                <tr>
+                                                    <td class="text-center fw-bold ps-4">
+                                                        <span class="badge @(displayRank == 1 ? "bg-warning text-dark" : "bg-light text-secondary border") fs-6 px-3 py-2 rounded-pill">
+                                                            #@displayRank
+                                                        </span>
+                                                    </td>
+                                                    <td class="fw-semibold py-3">
+                                                        <div class="d-flex align-items-center gap-3">
+                                                            <div class="md-contestant-badge font-monospace">
+                                                                #@item.Contestant.ContestantNumber
+                                                            </div>
+                                                            <div>
+                                                                <div class="fw-bold text-dark">@item.Contestant.Name</div>
+                                                                @if (!string.IsNullOrWhiteSpace(item.Contestant.Region))
+                                                                {
+                                                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@item.Contestant.Region</div>
+                                                                }
                                                             </div>
                                                         </div>
                                                     </td>
-                                                }
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
+                                                    <td class="text-center text-muted small">
+                                                        @foreach (var crit in criteria)
+                                                        {
+                                                            var sRec = existingScores.FirstOrDefault(s => s.ContestantId == item.Contestant.Id && s.CriterionId == crit.Id);
+                                                            <span class="me-2">@crit.Name: <strong>@(sRec?.ScoreValue ?? 0)</strong></span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-center pe-4">
+                                                        <span class="font-monospace fw-bold text-primary fs-5 px-3 py-1 bg-primary bg-opacity-10 rounded-pill">
+                                                            @item.TotalScore.ToString("0.##", CultureInfo.InvariantCulture)
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="card-footer pastel-footer py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <span class="text-muted small fw-medium"><i class="bi bi-cloud-check-fill text-success me-1"></i> Scores save automatically as you type or slide.</span>
-                            <button class="btn pastel-btn-submit px-5 py-2 fw-bold rounded-pill shadow-sm" @onclick="SubmitScores">
-                                <i class="bi bi-check2-all me-1"></i> Submit Final Scores
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        }
+            }
+            else
+            {
+                <!-- Scoring Interface Grid Cards (Optimized for iPad / Touch Tablets) -->
+                <div class="row justify-content-center">
+                    <div class="col-12 col-xxl-10">
+                        <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Official Score Sheet</h5>
+                            <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-medium">
+                                <i class="bi bi-tablet me-1"></i> Touch Optimized View
+                            </span>
+                        </div>
+
+                        <div class="row g-3">
+                            @foreach (var c in contestants)
+                            {
+                                <div class="col-12 col-xl-6">
+                                    <div class="md-card p-3 p-md-4 rounded-4 shadow-2xs h-100 bg-white border">
+                                        <!-- Contestant Header -->
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="md-contestant-badge font-monospace fs-5 px-3 py-2">
+                                                    #@c.ContestantNumber
+                                                </div>
+                                                <div>
+                                                    <h5 class="fw-bold text-dark mb-0">@c.Name</h5>
+                                                    @if (!string.IsNullOrWhiteSpace(c.Region))
+                                                    {
+                                                        <span class="text-muted small"><i class="bi bi-geo-alt-fill text-danger me-1"></i>@c.Region</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill font-monospace fw-bold">
+                                                Total: @GetContestantTotal(c.Id).ToString("0.##", CultureInfo.InvariantCulture)
+                                            </span>
+                                        </div>
+
+                                        <!-- Criteria Sliders Stack -->
+                                        <div class="d-flex flex-column gap-3">
+                                            @foreach (var crit in criteria)
+                                            {
+                                                <div class="p-3 bg-light bg-opacity-50 rounded-4 border">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span class="fw-bold text-dark small">@crit.Name</span>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="text-muted" style="font-size: 0.75rem;">Max: @crit.Percentage.ToString("0.##", CultureInfo.InvariantCulture)</span>
+                                                            <input type="number" 
+                                                                   min="0" 
+                                                                   max="@crit.Percentage.ToString(CultureInfo.InvariantCulture)" 
+                                                                   step="0.01"
+                                                                   class="form-control form-control-sm text-center font-monospace fw-bold md-input" 
+                                                                   style="width: 75px;"
+                                                                   value="@GetFormattedScore(c.Id, crit.Id)"
+                                                                   @onchange="@(e => UpdateScore(c.Id, crit.Id, e.Value))" />
+                                                        </div>
+                                                    </div>
+                                                    <!-- Touch-friendly Range Slider -->
+                                                    <input type="range" 
+                                                           min="0" 
+                                                           max="@crit.Percentage.ToString(CultureInfo.InvariantCulture)" 
+                                                           step="0.01"
+                                                           class="form-range md-range w-100"
+                                                           value="@GetFormattedScore(c.Id, crit.Id)"
+                                                           @oninput="@(e => UpdateScore(c.Id, crit.Id, e.Value))" />
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
 
 <style>
-    /* Responsive Pastel Theme UI Styling */
-    .pastel-theme-wrapper {
-        background-color: #f7f9fc;
+    .judge-portal-root {
+        background-color: #f8f9fc;
         min-height: 100vh;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .pastel-title {
-        color: #4a5568;
-    }
-    .pastel-logo {
-        max-height: 55px;
-        object-fit: contain;
-    }
-    .pastel-card {
-        border-radius: 16px;
+    .md-title { color: #1a1c1e; }
+    .md-logo { max-height: 55px; object-fit: contain; }
+    .md-card {
+        border-radius: 20px;
         background-color: #ffffff;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid #e3e8ef;
     }
-    .pastel-header {
-        background: linear-gradient(135deg, #b4c5e4 0%, #9cb1d6 100%) !important;
-        color: #2b3a4a !important;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
+    .md-header {
+        background: #f1f4f9;
+        color: #1a1c1e;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        border-bottom: 1px solid #e3e8ef;
     }
-    .pastel-banner-img {
-        max-height: 180px;
-        min-height: 120px;
-        object-fit: cover;
-        filter: brightness(0.92);
+    .md-banner-img { max-height: 160px; object-fit: cover; }
+    .md-banner-overlay {
+        background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0.98));
+        backdrop-filter: blur(6px);
     }
-    .pastel-banner-overlay {
-        background: linear-gradient(to bottom, rgba(255,255,255,0.88), rgba(255,255,255,0.96));
-        backdrop-filter: blur(4px);
-    }
-    .pastel-table-header {
-        background-color: #eaf1f8;
-        border-bottom: 1px solid #d2dedf;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-    }
-    .pastel-thead {
-        background-color: #f1f5f9;
-    }
-    .pastel-footer {
-        background-color: #f1f5f9;
-        border-bottom-left-radius: 16px;
-        border-bottom-right-radius: 16px;
-    }
-    .pastel-btn-primary {
-        background-color: #b4c5e4;
-        color: #2b3a4a;
-        border: none;
-    }
-    .pastel-btn-primary:hover {
-        background-color: #9cb1d6;
-        color: #1a2634;
-    }
-    .pastel-btn-submit {
-        background-color: #b7e4c7;
-        color: #1b4332;
-        border: none;
-        transition: all 0.2s ease-in-out;
-    }
-    .pastel-btn-submit:hover {
-        background-color: #95d5b2;
-        color: #081c15;
-        transform: translateY(-1px);
-    }
-    .pastel-alert-success {
-        background-color: #d8f3dc;
-        color: #2d6a4f;
-        border-color: #b7e4c7;
-    }
-    .pastel-alert-warning {
-        background-color: #faedcd;
-        color: #856404;
-        border-color: #fefae0;
-    }
-    .pastel-input {
-        border-color: #cbd5e1;
-        background-color: #fafbfc;
-        border-radius: 8px;
-    }
-    .pastel-input:focus {
-        border-color: #b4c5e4;
-        box-shadow: 0 0 0 0.2rem rgba(180, 197, 228, 0.25);
-    }
-    .pastel-contestant-badge {
-        background-color: #e2e8f0;
-        color: #334155;
+    .md-table-header { background-color: #f8f9fc; border-bottom: 1px solid #e3e8ef; }
+    .md-thead { background-color: #f1f4f9; }
+    .md-btn-primary { background-color: #0b57d0; color: #ffffff; border: none; }
+    .md-btn-primary:hover { background-color: #0842a0; color: #ffffff; }
+    .md-btn-submit { background-color: #0f9d58; color: #ffffff; border: none; }
+    .md-btn-submit:hover { background-color: #0b8043; color: #ffffff; }
+    .md-alert-success { background-color: #e6f4ea; color: #137333; }
+    .md-alert-warning { background-color: #fef7e0; color: #b06000; }
+    .md-input { border-color: #c4c7c5; background-color: #f8f9fa; border-radius: 8px; }
+    .md-contestant-badge {
+        background-color: #f1f3f4;
+        color: #3c4043;
         font-weight: 700;
-        font-size: 0.85rem;
-        padding: 0.4rem 0.6rem;
-        border-radius: 8px;
-        min-width: 42px;
-        text-align: center;
+        border-radius: 10px;
     }
-    .pastel-icon-circle {
-        width: 64px;
-        height: 64px;
-        background-color: #edf2f7;
+    .md-icon-circle {
+        width: 64px; height: 64px;
+        background-color: #e8f0fe;
         border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
     }
-    .custom-range {
-        accent-color: #b4c5e4;
-        height: 6px;
+    .md-range {
+        accent-color: #0b57d0;
+        height: 8px;
         cursor: pointer;
+        background: #e0e2e0;
+        border-radius: 4px;
     }
-    .pastel-table td, .pastel-table th {
-        vertical-align: middle;
-    }
-
-    /* Welcome Overlay & Banner Drawover Animation */
     .welcome-overlay-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(26, 38, 52, 0.75);
-        backdrop-filter: blur(8px);
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: rgba(31, 31, 31, 0.6);
+        backdrop-filter: blur(4px);
         z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeInOverlay 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        display: flex; align-items: center; justify-content: center;
+        animation: fadeInOverlay 0.3s ease forwards;
     }
-    .welcome-overlay-backdrop.fade-out {
-        animation: fadeOutOverlay 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
+    .welcome-overlay-backdrop.fade-out { animation: fadeOutOverlay 0.3s ease forwards; }
     .welcome-overlay-card {
-        background: #ffffff;
-        width: 90%;
-        max-width: 650px;
-        border-radius: 24px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        animation: scaleUpCard 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        background: #ffffff; width: 90%; max-width: 550px;
+        border-radius: 28px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     }
-    .banner-drawover-wrapper {
-        width: 100%;
-        max-height: 180px;
-        overflow: hidden;
-        border: 2px solid #e2e8f0;
-    }
-    .banner-drawover-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        animation: bannerSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    @@keyframes fadeInOverlay {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @@keyframes fadeOutOverlay {
-        from { opacity: 1; transform: scale(1); }
-        to { opacity: 0; transform: scale(1.03); }
-    }
-    @@keyframes scaleUpCard {
-        from { opacity: 0; transform: translateY(30px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    @@keyframes bannerSlideIn {
-        from { opacity: 0; transform: translateY(-20px) scale(1.05); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    @@media (max-width: 768px) {
-        .pastel-banner-img {
-            max-height: 140px;
-        }
-        .welcome-overlay-card {
-            padding: 1.5rem !important;
-            width: 95%;
-        }
-    }
+    .banner-drawover-wrapper { width: 100%; max-height: 160px; overflow: hidden; border-radius: 12px; }
+    .banner-drawover-img { width: 100%; height: 100%; object-fit: cover; }
+    @@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes fadeOutOverlay { from { opacity: 1; } to { opacity: 0; } }
 </style>
 
 @code {
@@ -435,6 +388,7 @@
     private bool isLoggedIn = false;
     private bool showWelcomeOverlay = false;
     private bool isOverlayFadingOut = false;
+    private bool showPersonalRanking = false;
 
     [SupplyParameterFromQuery]
     public int? EventId { get; set; }
@@ -448,13 +402,6 @@
     private List<Criterion> criteria = new();
     private List<Score> existingScores = new();
 
-    protected override void OnInitialized()
-    {
-        // Preload images into browser cache immediately on load
-        Navigation.ToAbsoluteUri("/images/banner.png");
-        Navigation.ToAbsoluteUri("/images/logo.png");
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         if (!isLoggedIn && EventId.HasValue && !string.IsNullOrEmpty(Pin))
@@ -466,25 +413,14 @@
     private async Task AttemptAutoLogin(int eventId, string pin)
     {
         loginError = "";
-        
-        currentJudge = await Db.Judges
-            .FirstOrDefaultAsync(j => j.EventId == eventId && j.PinCode == pin);
-
-        if (currentJudge == null)
-        {
-            loginError = "Invalid QR login credentials.";
-            return;
-        }
+        currentJudge = await Db.Judges.FirstOrDefaultAsync(j => j.EventId == eventId && j.PinCode == pin);
+        if (currentJudge == null) { loginError = "Invalid QR login credentials."; return; }
 
         currentEvent = await Db.Events.FindAsync(currentJudge.EventId);
-        if (currentEvent == null)
-        {
-            loginError = "Associated event not found.";
-            return;
-        }
+        if (currentEvent == null) { loginError = "Associated event not found."; return; }
 
-        contestants = await Db.Contestants.Where(c => c.EventId == currentEvent.Id).OrderBy(c => c.ContestantNumber).ToListAsync();
-        criteria = await Db.Criteria.Where(cr => cr.EventId == currentEvent.Id).ToListAsync();
+        contestants = await Db.Contestants.Where(c => c.EventId == currentJudge.EventId).OrderBy(c => c.ContestantNumber).ToListAsync();
+        criteria = await Db.Criteria.Where(cr => cr.EventId == currentJudge.EventId).OrderBy(cr => cr.Id).ToListAsync();
         existingScores = await Db.Scores.Where(s => s.JudgeId == currentJudge.Id).ToListAsync();
 
         isLoggedIn = true;
@@ -494,29 +430,20 @@
     private async Task AuthenticateJudge()
     {
         loginError = "";
-        successMessage = "";
-        if (string.IsNullOrWhiteSpace(enteredPin))
+        if (string.IsNullOrWhiteSpace(enteredPin) || enteredPin.Length != 6)
         {
-            loginError = "Please enter your PIN code.";
+            loginError = "Please enter a valid 6-digit PIN.";
             return;
         }
 
         currentJudge = await Db.Judges.FirstOrDefaultAsync(j => j.PinCode == enteredPin);
-        if (currentJudge == null)
-        {
-            loginError = "Invalid PIN code. Please check with your event administrator.";
-            return;
-        }
+        if (currentJudge == null) { loginError = "Incorrect PIN code. Please try again."; return; }
 
         currentEvent = await Db.Events.FindAsync(currentJudge.EventId);
-        if (currentEvent == null)
-        {
-            loginError = "Associated event not found.";
-            return;
-        }
+        if (currentEvent == null) { loginError = "Associated event not found."; return; }
 
-        contestants = await Db.Contestants.Where(c => c.EventId == currentEvent.Id).OrderBy(c => c.ContestantNumber).ToListAsync();
-        criteria = await Db.Criteria.Where(cr => cr.EventId == currentEvent.Id).ToListAsync();
+        contestants = await Db.Contestants.Where(c => c.EventId == currentJudge.EventId).OrderBy(c => c.ContestantNumber).ToListAsync();
+        criteria = await Db.Criteria.Where(cr => cr.EventId == currentJudge.EventId).OrderBy(cr => cr.Id).ToListAsync();
         existingScores = await Db.Scores.Where(s => s.JudgeId == currentJudge.Id).ToListAsync();
 
         isLoggedIn = true;
@@ -527,70 +454,75 @@
     {
         isOverlayFadingOut = true;
         StateHasChanged();
-        await Task.Delay(400); // Matches CSS transition duration
+        await Task.Delay(350);
         showWelcomeOverlay = false;
         isOverlayFadingOut = false;
+        StateHasChanged();
+    }
+
+    private void TogglePersonalRanking() => showPersonalRanking = !showPersonalRanking;
+
+    private string GetFormattedScore(int contestantId, int criterionId)
+    {
+        var scoreRecord = existingScores.FirstOrDefault(s => s.ContestantId == contestantId && s.CriterionId == criterionId);
+        return (scoreRecord?.ScoreValue ?? 0).ToString(CultureInfo.InvariantCulture);
+    }
+
+    private decimal GetContestantTotal(int contestantId)
+    {
+        decimal total = 0;
+        foreach (var crit in criteria)
+        {
+            var scoreRec = existingScores.FirstOrDefault(s => s.ContestantId == contestantId && s.CriterionId == crit.Id);
+            total += scoreRec?.ScoreValue ?? 0;
+        }
+        return total;
+    }
+
+    private async Task UpdateScore(int contestantId, int criterionId, object? val)
+    {
+        if (val == null) return;
+        if (decimal.TryParse(val.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal parsedVal))
+        {
+            var crit = criteria.FirstOrDefault(c => c.Id == criterionId);
+            if (crit != null && parsedVal > crit.Percentage) parsedVal = crit.Percentage;
+            if (parsedVal < 0) parsedVal = 0;
+
+            var scoreRecord = existingScores.FirstOrDefault(s => s.ContestantId == contestantId && s.CriterionId == criterionId);
+            if (scoreRecord != null)
+            {
+                scoreRecord.ScoreValue = parsedVal;
+                Db.Scores.Update(scoreRecord);
+            }
+            else
+            {
+                var newScore = new Score { JudgeId = currentJudge!.Id, ContestantId = contestantId, CriterionId = criterionId, ScoreValue = parsedVal };
+                existingScores.Add(newScore);
+                Db.Scores.Add(newScore);
+            }
+            await Db.SaveChangesAsync();
+        }
+    }
+
+    private async Task SubmitScores()
+    {
+        successMessage = "Scores successfully saved and submitted!";
+        StateHasChanged();
+        await Task.Delay(3000);
+        successMessage = "";
         StateHasChanged();
     }
 
     private void Logout()
     {
         isLoggedIn = false;
-        showWelcomeOverlay = false;
-        enteredPin = "";
-        successMessage = "";
         currentJudge = null;
         currentEvent = null;
+        enteredPin = "";
+        showPersonalRanking = false;
         contestants.Clear();
         criteria.Clear();
         existingScores.Clear();
-        
         Navigation.NavigateTo("/judge-portal", forceLoad: false);
-    }
-
-    private string GetFormattedScore(int contestantId, int criterionId)
-    {
-        var scoreRecord = existingScores.FirstOrDefault(s => s.ContestantId == contestantId && s.CriterionId == criterionId);
-        if (scoreRecord == null) return "0";
-        return scoreRecord.ScoreValue.ToString(CultureInfo.InvariantCulture);
-    }
-
-    private async Task UpdateScore(int contestantId, int criterionId, object? val)
-    {
-        if (currentJudge == null || currentEvent == null) return;
-
-        string stringVal = val?.ToString() ?? "0";
-        stringVal = stringVal.Replace(',', '.');
-
-        if (decimal.TryParse(stringVal, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal parsedScore))
-        {
-            var scoreRecord = existingScores.FirstOrDefault(s => s.ContestantId == contestantId && s.CriterionId == criterionId);
-
-            if (scoreRecord != null)
-            {
-                scoreRecord.ScoreValue = parsedScore;
-                Db.Scores.Update(scoreRecord);
-            }
-            else
-            {
-                var newScore = new Score
-                {
-                    EventId = currentEvent.Id,
-                    JudgeId = currentJudge.Id,
-                    ContestantId = contestantId,
-                    CriterionId = criterionId,
-                    ScoreValue = parsedScore
-                };
-                Db.Scores.Add(newScore);
-                existingScores.Add(newScore);
-            }
-
-            await Db.SaveChangesAsync();
-        }
-    }
-
-    private void SubmitScores()
-    {
-        successMessage = "Scores successfully finalized and submitted!";
     }
 }

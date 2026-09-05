@@ -153,12 +153,14 @@
                                         </div>
                                     </td>
 
-                                    <!-- Judge Individual Scores -->
+                                    <!-- Judge Individual Scores & Ranks -->
                                     @foreach (var judge in judges)
                                     {
                                         var detail = item.JudgeDetails.FirstOrDefault(jd => jd.JudgeId == judge.Id);
-                                        <td class="font-monospace text-secondary fw-medium">
-                                            @(detail != null ? detail.Score.ToString("N1") : "0.0")
+                                        judgeRanks.TryGetValue((judge.Id, item.Contestant.Id), out int rank);
+                                        <td class="font-monospace text-secondary fw-medium py-3">
+                                            <div>@(detail != null ? detail.Score.ToString("N1") : "0.0")</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">(@rank)</div>
                                         </td>
                                     }
                                     
@@ -187,6 +189,7 @@
     private List<Judge> judges = new();
     private List<Criterion> criteria = new();
     private List<ContestantResultModel> results = new();
+    private Dictionary<(int judgeId, int contestantId), int> judgeRanks = new();
     private PeriodicTimer? timer;
     private Task? timerTask;
 
@@ -223,6 +226,33 @@
 
         results = await TabulationService.ComputeEventResultsAsync(EventId);
         results = results.OrderBy(r => r.OverallRank).ThenBy(r => r.Contestant.ContestantNumber).ToList();
+
+        ComputeJudgeRanks();
+    }
+
+    private void ComputeJudgeRanks()
+    {
+        judgeRanks.Clear();
+        foreach (var judge in judges)
+        {
+            var judgeScores = results
+                .Select(r => new { 
+                    ContestantId = r.Contestant.Id, 
+                    Score = r.JudgeDetails.FirstOrDefault(jd => jd.JudgeId == judge.Id)?.Score ?? 0m 
+                })
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            int currentRank = 1;
+            for (int i = 0; i < judgeScores.Count; i++)
+            {
+                if (i > 0 && judgeScores[i].Score < judgeScores[i - 1].Score)
+                {
+                    currentRank = i + 1;
+                }
+                judgeRanks[(judge.Id, judgeScores[i].ContestantId)] = currentRank;
+            }
+        }
     }
 
     private async Task ToggleFinalization()
@@ -242,7 +272,7 @@
     }
 
     private async Task GoBack()
-{
-    await JS.InvokeVoidAsync("history.back");
-}
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
 }
