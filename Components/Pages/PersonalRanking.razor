@@ -98,15 +98,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @{ int rank = 1; }
                                 @foreach (var item in rankedContestants)
                                 {
+                                    decimal rankVal = contestantRanks.ContainsKey(item.ContestantId) ? contestantRanks[item.ContestantId] : 0;
                                     <tr>
-                                        <td class="ps-4 fw-bold">
-                                            @if (rank == 1) { <span class="badge bg-warning text-dark px-2 py-1">1st Place</span> }
-                                            else if (rank == 2) { <span class="badge bg-secondary px-2 py-1">2nd Place</span> }
-                                            else if (rank == 3) { <span class="badge text-white px-2 py-1" style="background-color: #cd7f32;">3rd Place</span> }
-                                            else { <span class="text-muted">#@rank</span> }
+                                        <td class="ps-4 fw-bold font-monospace">
+                                            @if (rankVal == 1.0m) { <span class="badge bg-warning text-dark px-2 py-1">1st Place</span> }
+                                            else if (rankVal == 2.0m) { <span class="badge bg-secondary px-2 py-1">2nd Place</span> }
+                                            else if (rankVal == 3.0m) { <span class="badge text-white px-2 py-1" style="background-color: #cd7f32;">3rd Place</span> }
+                                            else { <span class="text-muted">#@rankVal.ToString("0.#", CultureInfo.InvariantCulture)</span> }
                                         </td>
                                         <td>
                                             <div class="fw-bold text-dark">#@item.ContestantNumber - @item.ContestantName</div>
@@ -128,7 +128,6 @@
                                             @item.TotalScore.ToString("0.00", CultureInfo.InvariantCulture)
                                         </td>
                                     </tr>
-                                    rank++;
                                 }
                             </tbody>
                         </table>
@@ -147,6 +146,7 @@
     private int selectedJudgeId;
     private Judge? selectedJudge;
     private List<ContestantScoreSummary> rankedContestants = new();
+    private Dictionary<int, decimal> contestantRanks = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -158,6 +158,7 @@
         selectedJudgeId = 0;
         selectedJudge = null;
         rankedContestants.Clear();
+        contestantRanks.Clear();
         criteriaList.Clear();
 
         if (selectedEventId > 0)
@@ -213,6 +214,27 @@
         }
 
         rankedContestants = summaryList.OrderByDescending(s => s.TotalScore).ToList();
+        
+        // Compute fractional ranks for ties cleanly inside a local dictionary
+        contestantRanks.Clear();
+        int count = rankedContestants.Count;
+        for (int i = 0; i < count; )
+        {
+            int j = i;
+            while (j < count && rankedContestants[j].TotalScore == rankedContestants[i].TotalScore)
+            {
+                j++;
+            }
+
+            decimal averageRank = ((i + 1) + j) / 2.0m;
+
+            for (int k = i; k < j; k++)
+            {
+                contestantRanks[rankedContestants[k].ContestantId] = averageRank;
+            }
+
+            i = j;
+        }
     }
 
     public class ContestantScoreSummary

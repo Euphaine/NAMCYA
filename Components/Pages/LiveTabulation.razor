@@ -128,7 +128,7 @@
                                         }
                                         else
                                         {
-                                            <span class="text-muted fw-bold ps-2">@item.OverallRank.ToString("00")</span>
+                                            <span class="text-muted fw-bold ps-2 font-monospace">@item.OverallRank.ToString("0.#")</span>
                                         }
                                     </td>
 
@@ -153,14 +153,14 @@
                                         </div>
                                     </td>
 
-                                    <!-- Judge Individual Scores & Ranks -->
+                                    <!-- Judge Individual Scores & Fractional Ranks -->
                                     @foreach (var judge in judges)
                                     {
                                         var detail = item.JudgeDetails.FirstOrDefault(jd => jd.JudgeId == judge.Id);
-                                        judgeRanks.TryGetValue((judge.Id, item.Contestant.Id), out int rank);
+                                        judgeFractionalRanks.TryGetValue((judge.Id, item.Contestant.Id), out double rankVal);
                                         <td class="font-monospace text-secondary fw-medium py-3">
                                             <div>@(detail != null ? detail.Score.ToString("N1") : "0.0")</div>
-                                            <div class="text-muted" style="font-size: 0.75rem;">(@rank)</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">(@rankVal.ToString("0.#"))</div>
                                         </td>
                                     }
                                     
@@ -189,7 +189,7 @@
     private List<Judge> judges = new();
     private List<Criterion> criteria = new();
     private List<ContestantResultModel> results = new();
-    private Dictionary<(int judgeId, int contestantId), int> judgeRanks = new();
+    private Dictionary<(int judgeId, int contestantId), double> judgeFractionalRanks = new();
     private PeriodicTimer? timer;
     private Task? timerTask;
 
@@ -227,12 +227,12 @@
         results = await TabulationService.ComputeEventResultsAsync(EventId);
         results = results.OrderBy(r => r.OverallRank).ThenBy(r => r.Contestant.ContestantNumber).ToList();
 
-        ComputeJudgeRanks();
+        ComputeJudgeFractionalRanks();
     }
 
-    private void ComputeJudgeRanks()
+    private void ComputeJudgeFractionalRanks()
     {
-        judgeRanks.Clear();
+        judgeFractionalRanks.Clear();
         foreach (var judge in judges)
         {
             var judgeScores = results
@@ -243,14 +243,30 @@
                 .OrderByDescending(x => x.Score)
                 .ToList();
 
-            int currentRank = 1;
-            for (int i = 0; i < judgeScores.Count; i++)
+            int n = judgeScores.Count;
+            int i = 0;
+
+            while (i < n)
             {
-                if (i > 0 && judgeScores[i].Score < judgeScores[i - 1].Score)
+                int j = i;
+                while (j < n && judgeScores[j].Score == judgeScores[i].Score)
                 {
-                    currentRank = i + 1;
+                    j++;
                 }
-                judgeRanks[(judge.Id, judgeScores[i].ContestantId)] = currentRank;
+
+                double sumOfPositions = 0;
+                for (int k = i; k < j; k++)
+                {
+                    sumOfPositions += (k + 1);
+                }
+                double fractionalRank = sumOfPositions / (j - i);
+
+                for (int k = i; k < j; k++)
+                {
+                    judgeFractionalRanks[(judge.Id, judgeScores[k].ContestantId)] = fractionalRank;
+                }
+
+                i = j;
             }
         }
     }
